@@ -2,12 +2,22 @@ namespace Parser {
 	class Node {
 	}
 	
-	export class Integer extends Node {
+	enum Type {
+		Void,
+		Integer,
+		String,
+		Item
+	}
+	
+	export class Integer {
 		value: number;
 		
 		constructor(text: string[]) {
-			super();
 			this.value = parseInt(text.join(""), 10);
+		}
+		
+		getType(): Type {
+			return Type.Integer;
 		}
 	}
 	
@@ -20,27 +30,21 @@ namespace Parser {
 		}
 	}
 	
-	export class ParameterList extends Node {
-		value: number[];
-		constructor(head: Integer, tail: any[]) {
-			super();
-			this.value = [head.value];
-			tail.forEach((e) => {
-				var i = <Integer>e[1];
-				this.value.push(i.value);
-			});
+	export class GetItemFunctionCall {
+		id: Integer;
+		
+		constructor(id: Integer) {
+			this.id = id;
 		}
 	}
 	
-	export class FunctionCall extends Node {
-		functionName: string;
+	export class GetCostFunctionCall {
+		item: GetItemFunctionCall;
+		buy: boolean;
 		
-		parameter: number[];
-		
-		constructor(functionName: Token, parameter: ParameterList) {
-			super();
-			this.functionName = functionName.value;
-			this.parameter = parameter.value;
+		constructor(item: GetItemFunctionCall, buyOrSell: string) {
+			this.item = item;
+			this.buy = buyOrSell == "buy";
 		}
 	}
 }

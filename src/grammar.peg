@@ -1,14 +1,46 @@
+// STARTING SYMBOL
+
 start
-	= call
+	= getItemCall / getCostCall / integer
+
+getItemCall "get item"
+	= "getItem" __ "(" __ id:integerNode __ ")" { return new Parser.GetItemFunctionCall(id); }
 	
+getCostCall "get cost"
+	= "getCost" __ "(" __ item:itemNode __ "," __ buyOrSell:( "buy" / "sell" ) __ ")" { return new Parser.GetCostFunctionCall(item, buyOrSell); } 
+
+integerNode
+	= integer / getCostCall
+	
+itemNode
+	= getItemCall
+
+
+// SIMPLE TOKENS
+
 token "token"
 	= token:[a-zA-Z_]+ { return new Parser.Token(token); }
-	
-parameterList "parameter list"
-	= head:integer tail:("," integer)* { return new Parser.ParameterList(head, tail); }
-	
-call "function call"
-	= name:token "(" parameter:parameterList ")" { return new Parser.FunctionCall(name, parameter); }
-	
+
 integer "integer"
 	= digits:[0-9]+ { return new Parser.Integer(digits); }
+	
+__
+	= (WhiteSpace / LineTerminatorSequence)*
+  
+WhiteSpace "whitespace"
+	= "\t"
+	/ "\v"
+	/ "\f"
+	/ " "
+	/ "\u00A0"
+	/ "\uFEFF"
+	/ Zs
+	
+LineTerminatorSequence "end of line"
+	= "\n"
+	/ "\r\n"
+	/ "\r"
+	/ "\u2028"
+	/ "\u2029"
+	
+Zs = [\u0020\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]
