@@ -1,0 +1,20 @@
+{
+  "name": "GW2Calculator",
+  "version": "0.0.1",
+  "homepage": "https://github.com/RedGlow/GW2Calculator",
+  "authors": [
+    "Mattia <mattia.belletti@gmail.com>"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "devDependencies": {
+    "angularjs": "~1.4.7",
+    "jquery": "~2.1.4"
+  }
+}

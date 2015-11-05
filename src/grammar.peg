@@ -1,0 +1,14 @@
+start
+	= call
+	
+token "token"
+	= token:[a-zA-Z_]+ { return new Parser.Token(token); }
+	
+parameterList "parameter list"
+	= head:integer tail:("," integer)* { return new Parser.ParameterList(head, tail); }
+	
+call "function call"
+	= name:token "(" parameter:parameterList ")" { return new Parser.FunctionCall(name, parameter); }
+	
+integer "integer"
+	= digits:[0-9]+ { return new Parser.Integer(digits); }

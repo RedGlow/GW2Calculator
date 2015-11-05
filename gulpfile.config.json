@@ -1,0 +1,11 @@
+{
+	"srcDir": "./src",
+	"tsDir": "./src/ts",
+	"lessDir": "./src/less",
+	"staticDir": "./src",
+	"tsConfig": "./tsconfig.json",
+	"bowerDir": "lib",
+	"distDir": "./dist",
+	"distJsDir": "./dist/js",
+	"distCssDir": "./dist/css"
+}
