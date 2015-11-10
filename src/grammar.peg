@@ -1,29 +1,37 @@
 // STARTING SYMBOL
 
 start
-	= getItemCall / getCostCall / integer
-
-getItemCall "get item"
-	= "getItem" __ "(" __ id:integerNode __ ")" { return new Parser.GetItemFunctionCall(id); }
+	= Expression
 	
-getCostCall "get cost"
-	= "getCost" __ "(" __ item:itemNode __ "," __ buyOrSell:( "buy" / "sell" ) __ ")" { return new Parser.GetCostFunctionCall(item, buyOrSell); } 
-
-integerNode
-	= integer / getCostCall
+Expression
+	= head:Term tail:(__ ("+") __ Term)* {
+		var returnValue = head;
+		for(var i = 0; i < tail.length; i++) {
+			returnValue = new Parser.OperatorCall(Parser.Operator.Sum, returnValue, tail[i][3]);
+		}
+		return returnValue;
+	}
 	
-itemNode
-	= getItemCall
+Term = Factor
 
+Factor
+	= "(" __ expression:Expression __ ")" { return expression; }
+	/ Integer
+	/ FunctionCall
+	
+FunctionCall
+	= GetItemCall
+	/ GetCostCall
+	
+GetItemCall
+	= "getItem" __ "(" __ parameter:Expression __ ")" { return new Parser.GetItemFunctionCall(parameter); }
+	
+GetCostCall
+	= "getCost" __ "(" __ item:Expression __ "," __ buyOrSell:( "buy" / "sell" ) __ ")" { return new Parser.GetCostFunctionCall(item, buyOrSell, expected); } 
 
-// SIMPLE TOKENS
-
-token "token"
-	= token:[a-zA-Z_]+ { return new Parser.Token(token); }
-
-integer "integer"
+Integer "integer"
 	= digits:[0-9]+ { return new Parser.Integer(digits); }
-	
+
 __
 	= (WhiteSpace / LineTerminatorSequence)*
   

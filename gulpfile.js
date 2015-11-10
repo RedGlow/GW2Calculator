@@ -26,7 +26,6 @@ gulp.task('peg', function() {
 	return gulp.src(config.srcDir + '/grammar.peg')
 		.pipe(plugins.peg({exportVar: 'var gw2CalculatorParser'}).on("error", plugins.util.log))
 		.pipe(gulp.dest(config.srcDir + '/js'))
-		.pipe(plugins.livereload())
 		;
 });
 
