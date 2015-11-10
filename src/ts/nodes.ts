@@ -1,13 +1,20 @@
+///<reference path="gw2api.d.ts"/>
+
 namespace Parser {
 	enum NodeType {
 		Item,
 		Integer,
-		Void
+		Void,
+		Cost
+	}
+	
+	export class NoPromiseValueException extends Error {
 	}
 	
 	export interface INode {
 		toString(): string;
 		getType(): NodeType;
+		getValue($q: ng.IQService, api: IGW2API): ng.IPromise<any>;
 	}
 	
 	export class Integer implements INode {
@@ -24,6 +31,10 @@ namespace Parser {
 		public getType(): NodeType {
 			return NodeType.Integer;
 		}
+		
+		getValue($q: ng.IQService, api: IGW2API): ng.IPromise<number> {
+			return $q.when(this.value);
+		}
 	}
 	
 	interface ExpectedFunction {
@@ -38,6 +49,7 @@ namespace Parser {
 		protected throwError(numParameter: string, type: string) {
 			this.expected("a " + this.name + " call with " + type + " as " + numParameter + " parameter");
 		}
+		abstract getValue($q: ng.IQService, api: IGW2API): ng.IPromise<any>;
 	}
 	
 	export class GetItemFunctionCall extends FunctionCall {
@@ -55,30 +67,56 @@ namespace Parser {
 		public getType(): NodeType {
 			return NodeType.Item;
 		}
+
+		getValue($q: ng.IQService, api: IGW2API): ng.IPromise<Typing.ItemWrapper> {
+			// get the id
+			return this.id.getValue($q, api).then((value: number) => {
+				// get the item
+				return api.getItem(value);
+			}).then((item: Item) => {
+				return new Typing.ItemWrapper(item);
+			});
+		}
 	}
 	
 	export class GetCostFunctionCall extends FunctionCall {
 		buy: boolean;
 		
-		constructor(public item: INode, buyOrSell: string, expected: ExpectedFunction) {
+		constructor(public id: INode, buyOrSell: string, expected: ExpectedFunction) {
 			super(expected, "getCost");
-			if(item.getType() != NodeType.Item) {
-				this.throwError("first", "an item");
+			if(id.getType() != NodeType.Integer) {
+				this.throwError("first", "a number");
 			}
 			this.buy = buyOrSell == "buy";
 		}
 
 		public toString(): string {
-			return "getCost(" + this.item.toString() + ", " + (this.buy ? "buy" : "sell") + ")";
+			return "getCost(" + this.id.toString() + ", " + (this.buy ? "buy" : "sell") + ")";
 		}
 		
 		public getType(): NodeType {
 			return NodeType.Integer;
 		}
+
+		getValue($q: ng.IQService, api: IGW2API): ng.IPromise<number> {
+			// get the item
+			return this.id.getValue($q, api).then((id: number) => {
+				// get the listing
+				return api.getListing(id);
+			}).then(listing => {
+				// get the unit price
+				if(this.buy) {
+					return listing.buys[0].unit_price;
+				} else {
+					return listing.sells[0].unit_price;
+				}
+			});
+		}
 	}
 	
 	export enum Operator {
-		Sum
+		Sum,
+		Product
 	};
 	
 	export class OperatorCall implements INode {
@@ -90,6 +128,8 @@ namespace Parser {
 			switch(this.operator) {
 				case Operator.Sum:
 					op = "+"; break;
+				case Operator.Product:
+					op = "*"; break;
 				default:
 					op = "???"; break;
 			}
@@ -98,6 +138,38 @@ namespace Parser {
 		
 		public getType(): NodeType {
 			return NodeType.Integer;
+		}
+
+		public getValue($q: ng.IQService, api: IGW2API): ng.IPromise<number> {
+			return $q.all([this.leftHand.getValue($q, api), this.rightHand.getValue($q, api)]).then((members: number[]) => {
+				switch(this.operator) {
+					case Operator.Sum:
+						return members[0] + members[1];
+					case Operator.Product:
+						return members[0] * members[1];
+					default:
+						throw new Error("Unknown operator");
+				}
+			});
+		}
+	}
+	
+	export class CostNode implements INode {
+		constructor(public amountNode: INode) {
+		}
+		
+		public toString(): string {
+			return "cost(" + this.amountNode.toString() + ")";
+		}
+		
+		public getType(): NodeType {
+			return NodeType.Cost;
+		}
+		
+		public getValue($q: ng.IQService, api: IGW2API): ng.IPromise<Typing.Cost> {
+			return this.amountNode.getValue($q, api).then((amount: number) => {
+				return new Typing.Cost(amount);
+			});
 		}
 	}
 }

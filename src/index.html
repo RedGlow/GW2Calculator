@@ -5,11 +5,13 @@
 		<!-- build:js js/scripts.min.js -->
 		<script src="../bower_components/jquery/dist/jquery.js"></script>
 		<script src="../bower_components/bootstrap/dist/js/bootstrap.js"></script>
-		<script src="../bower_components/angularjs/angular.js"></script>
+		<script src="../bower_components/angularjs/angular.min.js"></script>
 		<script src="../bower_components/angular-gw2-api/src/gw2api.js"></script>
 		<script src="js/grammar.js"></script>
+		<script src="ts/gw2api.d.ts"></script>
 		<script src="ts/parser.d.ts"></script>
 		<script src="ts/nodes.ts"></script> 
+		<script src="ts/types.ts"></script> 
 		<script src="ts/main.ts"></script>
 		<!-- endbuild -->
 		<!-- build:css css/styles.min.css -->
@@ -20,13 +22,13 @@
 	</head>
 	<body ng-app="gw2-calculator" ng-controller="MainController">
 		<textarea ng-model="expression"></textarea>
-		<p>{{ result }}</p>
+		<p>Parsed expression: {{ parsedExpression }}</p>
+		<p ng-class="{hidden: result === null}"><node-renderer value="result"/></p>
 		<pre ng-class="{hidden: error === null}" class="error">{{ error }}</pre>
 		<div ng-class="{hidden: parsingError === null}" class="parsing-error">
 			<p>{{ parsingError.message }}</p>
 			<pre class="expression">{{ expression }}
 {{ columnSpaces }}^</pre>
-			<!--<pre class="err">{{ parsingError }}</pre>-->
 		</div>
 	</body>
 </html>

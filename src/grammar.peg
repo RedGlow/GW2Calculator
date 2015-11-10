@@ -12,7 +12,14 @@ Expression
 		return returnValue;
 	}
 	
-Term = Factor
+Term
+	= head:Factor tail:(__ ("*") __ Factor)* {
+		var returnValue = head;
+		for(var i = 0; i < tail.length; i++) {
+			returnValue = new Parser.OperatorCall(Parser.Operator.Product, returnValue, tail[i][3]);
+		}
+		return returnValue;
+	}
 
 Factor
 	= "(" __ expression:Expression __ ")" { return expression; }
@@ -22,12 +29,16 @@ Factor
 FunctionCall
 	= GetItemCall
 	/ GetCostCall
+	/ Cost
 	
 GetItemCall
 	= "getItem" __ "(" __ parameter:Expression __ ")" { return new Parser.GetItemFunctionCall(parameter); }
 	
 GetCostCall
 	= "getCost" __ "(" __ item:Expression __ "," __ buyOrSell:( "buy" / "sell" ) __ ")" { return new Parser.GetCostFunctionCall(item, buyOrSell, expected); } 
+
+Cost
+	= "cost" __ "(" __ cost:Expression __ ")" { return new Parser.CostNode(cost); }
 
 Integer "integer"
 	= digits:[0-9]+ { return new Parser.Integer(digits); }

@@ -48,7 +48,7 @@ gulp.task('js', gulp.series(gulp.parallel('bower', 'tsd', 'peg'), function() {
 		.pipe(plugins.gulpif, '*.ts', tsChannel())
 		.pipe(gulp.dest, config.distJsDir + '/debug')
 		.pipe(plugins.concat, 'scripts.min.js')
-		.pipe(plugins.uglify)
+		//.pipe(plugins.uglify)
 		.pipe(plugins.sourcemaps.write)
 		.pipe(gulp.dest, config.distJsDir)
 		.pipe(plugins.livereload)

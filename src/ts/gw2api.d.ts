@@ -3,6 +3,7 @@
 
 interface IGW2API {
 	getItem(id: number): ng.IPromise<Item>;
+	getListing(id: number): ng.IPromise<Listings>;
 }
 
 declare class Item {
@@ -19,4 +20,16 @@ declare class Item {
 	flags: string[];
 	game_types: string[];
 	restrictions: string[];
+}
+
+declare class Listings {
+	id: number;
+	buys: Listing[];
+	sells: Listing[];
+}
+
+declare class Listing {
+	listings: number;
+	unit_price: number;
+	quantity: number;
 }
