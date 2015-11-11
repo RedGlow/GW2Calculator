@@ -21,8 +21,7 @@
 		<!-- endbuild -->
 	</head>
 	<body ng-app="gw2-calculator" ng-controller="MainController">
-		<textarea ng-model="expression"></textarea>
-		<p>Parsed expression: {{ parsedExpression }}</p>
+		<textarea class="form-control" rows="5" ng-model="expression"></textarea>
 		<p ng-class="{hidden: result === null}"><node-renderer value="result"/></p>
 		<pre ng-class="{hidden: error === null}" class="error">{{ error }}</pre>
 		<div ng-class="{hidden: parsingError === null}" class="parsing-error">
@@ -30,5 +29,6 @@
 			<pre class="expression">{{ expression }}
 {{ columnSpaces }}^</pre>
 		</div>
+		<div>Parsed expression:<br><pre>{{ parsedExpression }}</pre></div>
 	</body>
 </html>

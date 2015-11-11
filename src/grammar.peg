@@ -4,32 +4,37 @@ start
 	= Expression
 	
 Expression
-	= head:Term tail:(__ ("+") __ Term)* {
+	= head:Term tail:(__ ("+" / "-") __ Term)* {
 		var returnValue = head;
 		for(var i = 0; i < tail.length; i++) {
-			returnValue = new Parser.OperatorCall(Parser.Operator.Sum, returnValue, tail[i][3]);
+			returnValue = new Parser.OperatorCall(
+				tail[i][1] == "+" ? Parser.Operator.Sum : Parser.Operator.Difference,
+				returnValue, tail[i][3]);
 		}
 		return returnValue;
 	}
 	
 Term
-	= head:Factor tail:(__ ("*") __ Factor)* {
+	= head:Factor tail:(__ ("*" / "/") __ Factor)* {
 		var returnValue = head;
 		for(var i = 0; i < tail.length; i++) {
-			returnValue = new Parser.OperatorCall(Parser.Operator.Product, returnValue, tail[i][3]);
+			returnValue = new Parser.OperatorCall(
+				tail[i][1] == "*" ? Parser.Operator.Product : Parser.Operator.Quotient,
+				returnValue, tail[i][3]);
 		}
 		return returnValue;
 	}
 
 Factor
 	= "(" __ expression:Expression __ ")" { return expression; }
-	/ Integer
+	/ Number
 	/ FunctionCall
 	
 FunctionCall
 	= GetItemCall
 	/ GetCostCall
 	/ Cost
+	/ Table
 	
 GetItemCall
 	= "getItem" __ "(" __ parameter:Expression __ ")" { return new Parser.GetItemFunctionCall(parameter); }
@@ -39,9 +44,27 @@ GetCostCall
 
 Cost
 	= "cost" __ "(" __ cost:Expression __ ")" { return new Parser.CostNode(cost); }
+	
+Table
+	= "makeTable" __
+	"(" __  headHeaderName:HeaderName tailHeaderNames:(__ "," __ HeaderName)* __ ")" __
+	"(" __ headExpression:Expression tailExpressions:(__ "," __ Expression)* __ ")" {
+		var headers = [headHeaderName];
+		for(var i = 0; i < tailHeaderNames.length; i++) {
+			headers.push(tailHeaderNames[i][3]);
+		}
+		var expressions = [headExpression];
+		for(var i = 0; i < tailExpressions.length; i++) {
+			expressions.push(tailExpressions[i][3]);
+		}
+		return new Parser.TableNode(headers, expressions);
+	}
+	
+HeaderName
+	= letters:[^,()\n]+ { return letters.join(""); } 
 
-Integer "integer"
-	= digits:[0-9]+ { return new Parser.Integer(digits); }
+Number "number"
+	= digits:[-0-9.]+ { return new Parser.Number(digits); }
 
 __
 	= (WhiteSpace / LineTerminatorSequence)*
