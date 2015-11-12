@@ -205,31 +205,33 @@ angular.module("gw2-calculator", [
 	};
 }])
 .controller('MainController', ["$q", "$scope", "GW2API", "$http", "$rootScope", "lzw", "$base64", "$location", ($q: ng.IQService, $scope: IGw2CalculatorScope, GW2API: IGW2API, $http: ng.IHttpService, $rootScope: IMyRootScope, lzw, $base64, $location: ng.ILocationService) => {
-	/*$scope.expression =
-"makeTable(Item, Sell order, Sell contents)\n"+
-"(\n"+
-"getItem(75919),\n"+
-"cost(getCost(75919,sell)),\n"+
-"cost(-2000+\n"+
-"  (\n"+
-"  getCost(24341,sell)*165+\n"+
-"  getCost(24294,sell)*140+\n"+
-"  getCost(24299,sell)*110+\n"+
-"  getCost(24282,sell)*170+\n"+
-"  getCost(24288,sell)*120+\n"+
-"  getCost(24356,sell)*125+\n"+
-"  getCost(24350,sell)*195+\n"+
-"  getCost(24276,sell)*160+\n"+
-"  getCost(49424,sell)*1124+\n"+
-"  1000*420+\n"+
-"  1500*59+\n"+
-"  1500*59+\n"+
-"  10000*16+\n"+
-"  50000*5+\n"+
-"  getCost(74268,sell)*3+\n"+
-"  0)/500\n"+
-")\n"+
-")"
+	/*
+makeTable(Item, Key Cost Through Stabilizing Matrix, Should I buy keys with Stabilizing Matrices?, Sell encryption with order, Sell contents with order)
+(
+getItem(75919),
+cost(getCost(73248,buy)/2),
+getCost(73248,buy)/2<=2000,
+cost(getCost(75919,sell)),
+cost(
+  (
+  getCost(24341,sell)*165+
+  getCost(24294,sell)*140+
+  getCost(24299,sell)*110+
+  getCost(24282,sell)*170+
+  getCost(24288,sell)*120+
+  getCost(24356,sell)*125+
+  getCost(24350,sell)*195+
+  getCost(24276,sell)*160+
+  getCost(49424,sell)*1124+
+  1000*420+
+  1500*59+
+  1500*59+
+  10000*16+
+  50000*5+
+  getCost(74268,sell)*3 -
+  if(getCost(73248,buy)/2<=2000,getCost(73248,buy)/2,2000)*(500-49))/500
+)
+)
 ;*/
 	var b64lzw = $location.search().b64lzw;
 	if(!!b64lzw) {
