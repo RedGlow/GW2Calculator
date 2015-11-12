@@ -5,11 +5,14 @@
 
 interface IGw2CalculatorScope extends ng.IScope {
 	expression: string;
+	compressedExpression: string;
 	parsedExpression: string;
 	result: any;
 	error: Error;
 	parsingError: Error;
 	columnSpaces: string;
+	preError: string;
+	postError: string;
 }
 
 interface INodeRendererScope extends ng.IScope {
@@ -29,6 +32,8 @@ interface IMyRootScope extends ng.IRootScopeService {
 }
 
 angular.module("gw2-calculator", [
+	'LZW',
+	'base64',
 	'redglow.gw2api'
 ])
 .factory('RecursionHelper', ['$compile', function($compile){
@@ -78,6 +83,14 @@ angular.module("gw2-calculator", [
 	};
 }])
 .directive('nodeNumberRenderer', [function() {
+	return {
+		scope: {
+			value: '='
+		},
+		template: "{{value}}"
+	};
+}])
+.directive('nodeBooleanRenderer', [function() {
 	return {
 		scope: {
 			value: '='
@@ -159,6 +172,7 @@ angular.module("gw2-calculator", [
 		template:
 			"<div ng-switch on='type'>" +
 				"<node-number-renderer ng-switch-when='number' value='value.value'></node-number-renderer>" +
+				"<node-boolean-renderer ng-switch-when='boolean' value='value.value'></node-boolean-renderer>" +
 				"<node-cost-renderer ng-switch-when='cost' cost='value.value'></node-cost-renderer>" +
 				"<node-item-renderer ng-switch-when='item' item='value.item'></node-item-renderer>" +
 				"<node-table-renderer ng-switch-when='table' table='value'></node-table-renderer>" +
@@ -180,6 +194,8 @@ angular.module("gw2-calculator", [
 					scope.type = "item";
 				} else if(scope.value instanceof Typing.Table) {
 					scope.type = "table";
+				} else if(scope.value instanceof Typing.Boolean) {
+					scope.type = "boolean";
 				} else {
 					scope.type = "unknown";
 				}
@@ -188,8 +204,8 @@ angular.module("gw2-calculator", [
 		}
 	};
 }])
-.controller('MainController', ["$q", "$scope", "GW2API", "$http", "$rootScope", ($q: ng.IQService, $scope: IGw2CalculatorScope, GW2API: IGW2API, $http: ng.IHttpService, $rootScope: IMyRootScope) => {
-	$scope.expression =
+.controller('MainController', ["$q", "$scope", "GW2API", "$http", "$rootScope", "lzw", "$base64", "$location", ($q: ng.IQService, $scope: IGw2CalculatorScope, GW2API: IGW2API, $http: ng.IHttpService, $rootScope: IMyRootScope, lzw, $base64, $location: ng.ILocationService) => {
+	/*$scope.expression =
 "makeTable(Item, Sell order, Sell contents)\n"+
 "(\n"+
 "getItem(75919),\n"+
@@ -214,11 +230,16 @@ angular.module("gw2-calculator", [
 "  0)/500\n"+
 ")\n"+
 ")"
-;
+;*/
+	var b64lzw = $location.search().b64lzw;
+	if(!!b64lzw) {
+		$scope.expression = lzw.decompress(decodeURIComponent($base64.decode(b64lzw)));
+	}
 	$scope.result = null;
 	$scope.error = null;
 	$scope.parsingError = null;
 	$scope.$watch('expression', function() {
+		$location.search('b64lzw', $base64.encode(encodeURIComponent(lzw.compress($scope.expression))));
 		try {
 			console.log("parsing", $scope.expression);
 			var parsed = gw2CalculatorParser.parse($scope.expression);
@@ -239,6 +260,9 @@ angular.module("gw2-calculator", [
 			$scope.result = null;
 			if(e.constructor.name === "SyntaxError") {
 				$scope.parsingError = e;
+				var lines = $scope.expression.split('\n');
+				$scope.preError = lines.slice(0, e.line).join('\n');
+				$scope.postError = lines.slice(e.line+1).join('\n');
 				$scope.columnSpaces = new Array(e.column).join(' ');
 			} else {
 				$scope.error = e;

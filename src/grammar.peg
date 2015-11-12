@@ -4,12 +4,22 @@ start
 	= Expression
 	
 Expression
-	= head:Term tail:(__ ("+" / "-") __ Term)* {
+	= head:Term tail:(__ ("+" / "-" / "<=" / "<" / "=" / ">=" / ">") __ Term)* {
 		var returnValue = head;
 		for(var i = 0; i < tail.length; i++) {
+			var operator;
+			switch(tail[i][1]) {
+				case "+": operator = Parser.Operator.Sum; break;
+				case "-": operator = Parser.Operator.Difference; break;
+				case "<": operator = Parser.Operator.Less; break;
+				case "<=": operator = Parser.Operator.LessOrEqual; break;
+				case "==": operator = Parser.Operator.Equal; break;
+				case ">=": operator = Parser.Operator.GreaterOrEqual; break;
+				case ">": operator = Parser.Operator.Greater; break;
+			}
 			returnValue = new Parser.OperatorCall(
-				tail[i][1] == "+" ? Parser.Operator.Sum : Parser.Operator.Difference,
-				returnValue, tail[i][3]);
+				operator,
+				returnValue, tail[i][3], expected);
 		}
 		return returnValue;
 	}
@@ -20,7 +30,7 @@ Term
 		for(var i = 0; i < tail.length; i++) {
 			returnValue = new Parser.OperatorCall(
 				tail[i][1] == "*" ? Parser.Operator.Product : Parser.Operator.Quotient,
-				returnValue, tail[i][3]);
+				returnValue, tail[i][3], expected);
 		}
 		return returnValue;
 	}
@@ -28,11 +38,13 @@ Term
 Factor
 	= "(" __ expression:Expression __ ")" { return expression; }
 	/ Number
+	/ Boolean
 	/ FunctionCall
 	
 FunctionCall
 	= GetItemCall
 	/ GetCostCall
+	/ If
 	/ Cost
 	/ Table
 	
@@ -44,6 +56,11 @@ GetCostCall
 
 Cost
 	= "cost" __ "(" __ cost:Expression __ ")" { return new Parser.CostNode(cost); }
+	
+If
+	= "if" __ "(" __ condition:Expression __ "," __ trueResult:Expression __ "," falseResult:Expression __ ")" {
+		return new Parser.IfCall(condition, trueResult, falseResult);
+	}
 	
 Table
 	= "makeTable" __
@@ -57,7 +74,7 @@ Table
 		for(var i = 0; i < tailExpressions.length; i++) {
 			expressions.push(tailExpressions[i][3]);
 		}
-		return new Parser.TableNode(headers, expressions);
+		return new Parser.TableNode(headers, expressions, expected);
 	}
 	
 HeaderName
@@ -65,6 +82,10 @@ HeaderName
 
 Number "number"
 	= digits:[-0-9.]+ { return new Parser.Number(digits); }
+	
+Boolean "boolean"
+	= "true" { return new Parser.BooleanConstant(true); }
+	/ "false" { return new Parser.BooleanConstant(false); }
 
 __
 	= (WhiteSpace / LineTerminatorSequence)*

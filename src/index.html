@@ -6,6 +6,8 @@
 		<script src="../bower_components/jquery/dist/jquery.js"></script>
 		<script src="../bower_components/bootstrap/dist/js/bootstrap.js"></script>
 		<script src="../bower_components/angularjs/angular.min.js"></script>
+		<script src="../bower_components/angular-lzw/angular-lzw.js"></script>
+		<script src="../bower_components/angular-base64/angular-base64.js"></script>
 		<script src="../bower_components/angular-gw2-api/src/gw2api.js"></script>
 		<script src="js/grammar.js"></script>
 		<script src="ts/gw2api.d.ts"></script>
@@ -23,11 +25,13 @@
 	<body ng-app="gw2-calculator" ng-controller="MainController">
 		<textarea class="form-control" rows="5" ng-model="expression"></textarea>
 		<p ng-class="{hidden: result === null}"><node-renderer value="result"/></p>
+		<p>{{ compressedExpression }}</p>
 		<pre ng-class="{hidden: error === null}" class="error">{{ error }}</pre>
 		<div ng-class="{hidden: parsingError === null}" class="parsing-error">
 			<p>{{ parsingError.message }}</p>
-			<pre class="expression">{{ expression }}
-{{ columnSpaces }}^</pre>
+			<pre class="expression">{{ preError }}
+{{ columnSpaces }}<span class="error-marker">^</span>
+{{ postError }}</pre>
 		</div>
 		<div>Parsed expression:<br><pre>{{ parsedExpression }}</pre></div>
 	</body>

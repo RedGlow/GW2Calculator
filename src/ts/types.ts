@@ -14,4 +14,8 @@ namespace Typing {
 	export class Table {
 		public constructor(public headers: string[], public contents: any[][]) {}
 	}
+	
+	export class Boolean {
+		public constructor(public value: boolean) {}
+	}
 }

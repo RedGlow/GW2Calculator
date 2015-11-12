@@ -6,7 +6,8 @@ namespace Parser {
 		Number,
 		Void,
 		Cost,
-		Table
+		Table,
+		Boolean
 	}
 	
 	export class NoPromiseValueException extends Error {
@@ -47,10 +48,10 @@ namespace Parser {
 		}
 		abstract toString(): string;
 		abstract getType(): NodeType;
+		abstract getValue($q: ng.IQService, api: IGW2API): ng.IPromise<any>;
 		protected throwError(numParameter: string, type: string) {
 			this.expected("a " + this.name + " call with " + type + " as " + numParameter + " parameter");
 		}
-		abstract getValue($q: ng.IQService, api: IGW2API): ng.IPromise<any>;
 	}
 	
 	export class GetItemFunctionCall extends FunctionCall {
@@ -115,15 +116,55 @@ namespace Parser {
 		}
 	}
 	
+	export class IfCall extends FunctionCall {
+		constructor(public condition: INode, public trueResult: INode, public falseResult: INode, expected: ExpectedFunction) {
+			super(expected, "if");
+			if(condition.getType() != NodeType.Boolean) {
+				this.throwError("first", "a boolean");
+			}
+			if(trueResult.getType() != falseResult.getType()) {
+				this.throwError("second", "the same type as the third argument");
+			}
+		}
+		public toString(): string {
+			return "if(" + this.condition.toString() + "," + this.trueResult.toString() + "," + this.falseResult.toString() + ")";
+		}
+		public  getType(): NodeType {
+			return this.trueResult.getType();
+		}
+		public getValue($q: ng.IQService, api: IGW2API): ng.IPromise<any> {
+			return this.condition.getValue($q, api).then((condition: Typing.Boolean) => {
+				var result: INode;
+				if(condition.value) {
+					result = this.trueResult;
+				} else {
+					result = this.falseResult;
+				}
+				return result.getValue($q, api);
+			});
+		}
+	}
+	
 	export enum Operator {
 		Sum,
 		Difference,
 		Product,
-		Quotient
+		Quotient,
+		Less,
+		LessOrEqual,
+		Equal,
+		GreaterOrEqual,
+		Greater
 	};
 	
 	export class OperatorCall implements INode {
-		constructor(public operator: Operator, public leftHand: INode, public rightHand: INode) {
+		constructor(public operator: Operator, public leftHand: INode, public rightHand: INode, expected: ExpectedFunction) {
+			if(leftHand.getType() != NodeType.Number) {
+				expected("a left-hand member of 'number' type.");
+			}
+			if(rightHand.getType() != NodeType.Number) {
+				expected("a right-hand member of 'number' type.");
+			}
 		}
 		
 		public toString(): string {
@@ -137,6 +178,16 @@ namespace Parser {
 					op = "*"; break;
 				case Operator.Quotient:
 					op = "/"; break;
+				case Operator.Less:
+					op = "<"; break;
+				case Operator.LessOrEqual:
+					op = "<="; break;
+				case Operator.Equal:
+					op = "="; break;
+				case Operator.GreaterOrEqual:
+					op = ">="; break;
+				case Operator.Greater:
+					op = ">"; break;
 				default:
 					op = "???"; break;
 			}
@@ -144,14 +195,27 @@ namespace Parser {
 		}
 		
 		public getType(): NodeType {
-			return NodeType.Number;
+			switch(this.operator) {
+				case Operator.Sum:
+				case Operator.Difference:
+				case Operator.Product:
+				case Operator.Quotient:
+					return NodeType.Number;
+				case Operator.Less:
+				case Operator.LessOrEqual:
+				case Operator.Equal:
+				case Operator.GreaterOrEqual:
+				case Operator.Greater:
+				default:
+					return NodeType.Boolean;
+			}
 		}
 
 		public getValue($q: ng.IQService, api: IGW2API): ng.IPromise<Typing.NumberWrapper> {
 			return $q.all([this.leftHand.getValue($q, api), this.rightHand.getValue($q, api)]).then((results: Typing.NumberWrapper[]) => {
 				var first = results[0].value,
 					second = results[1].value,
-					result: number;
+					result: number|boolean;
 				switch(this.operator) {
 					case Operator.Sum:
 						result = first + second; break;
@@ -161,10 +225,24 @@ namespace Parser {
 						result = first * second; break;
 					case Operator.Quotient:
 						result = first / second; break;
+					case Operator.Less:
+						result = first < second; break;
+					case Operator.LessOrEqual:
+						result = first <= second; break;
+					case Operator.Equal:
+						result = first == second; break;
+					case Operator.GreaterOrEqual:
+						result = first >= second; break;
+					case Operator.Greater:
+						result = first > second; break;
 					default:
 						throw new Error("Unknown operator");
 				}
-				return new Typing.NumberWrapper(result);
+				if(typeof result === 'number') {
+					return new Typing.NumberWrapper(result);
+				} else {
+					return new Typing.Boolean(result);
+				}
 			});
 		}
 	}
@@ -252,6 +330,22 @@ namespace Parser {
 				// return the result
 				return new Typing.Table(this.headers, rows);
 			});
+		}
+	}
+	
+	export class BooleanConstant implements INode {
+		constructor(public value: boolean) {}
+		
+		toString(): string {
+			return this.value ? "true" : "false";
+		}
+		
+		getType(): NodeType {
+			return NodeType.Boolean;
+		}
+		
+		getValue($q: ng.IQService, api: IGW2API): ng.IPromise<Typing.Boolean> {
+			return $q.when(new Typing.Boolean(this.value));
 		}
 	}
 }
