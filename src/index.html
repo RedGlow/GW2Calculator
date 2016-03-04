@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+	
 	<head>
 		<title>GW2 Calculator</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<!-- build:js js/scripts.min.js -->
 		<script src="../bower_components/jquery/dist/jquery.js"></script>
 		<script src="../bower_components/bootstrap/dist/js/bootstrap.js"></script>
@@ -10,8 +12,10 @@
 		<script src="../bower_components/angular-base64/angular-base64.js"></script>
 		<script src="../bower_components/angular-gw2-api/src/gw2api.js"></script>
 		<script src="js/grammar.js"></script>
+		<script src="js/wikigrammar.js"></script>
 		<script src="ts/gw2api.d.ts"></script>
 		<script src="ts/parser.d.ts"></script>
+		<script src="ts/wiki.ts"></script> 
 		<script src="ts/nodes.ts"></script> 
 		<script src="ts/types.ts"></script> 
 		<script src="ts/main.ts"></script>
@@ -22,17 +26,34 @@
 		<link rel="stylesheet" href="../bower_components/angularjs/angular-csp.css"/>
 		<!-- endbuild -->
 	</head>
+	
 	<body ng-app="gw2-calculator" ng-controller="MainController">
-		<textarea class="form-control" rows="5" ng-model="expression"></textarea>
-		<p ng-class="{hidden: result === null}"><node-renderer value="result"/></p>
-		<p>{{ compressedExpression }}</p>
-		<pre ng-class="{hidden: error === null}" class="error">{{ error }}</pre>
-		<div ng-class="{hidden: parsingError === null}" class="parsing-error">
-			<p>{{ parsingError.message }}</p>
-			<pre class="expression">{{ preError }}
+		<div class="container-fluid">
+			<header class="row">
+				<div class="col-xs-12">
+					<h1>GW2 Calculator</h1>
+				</div>
+			</header>
+			<div class="row">
+				<div class="col-xs-12">
+					<form>
+						<div class="form-group">
+							<textarea class="form-control" rows="5" ng-model="expression"></textarea>
+						</div>
+					</form>
+				</div>
+			</div>
+			<div class="row">
+				<p class="col-xs-12" ng-class="{hidden: result === null}"><node-renderer value="result"/></p>
+				<p class="col-xs-12">{{ compressedExpression }}</p>
+				<pre class="col-xs-12" ng-class="{hidden: error === null}" class="error">{{ error }}</pre>
+				<div class="col-xs-12" ng-class="{hidden: parsingError === null}" class="parsing-error">
+					<p>{{ parsingError.message }}</p>
+					<pre class="expression">{{ preError }}
 {{ columnSpaces }}<span class="error-marker">^</span>
 {{ postError }}</pre>
+				</div>
+			</div>
 		</div>
-		<div>Parsed expression:<br><pre>{{ parsedExpression }}</pre></div>
 	</body>
 </html>

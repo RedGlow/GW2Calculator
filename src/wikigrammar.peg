@@ -1,0 +1,74 @@
+start
+    = WikiText
+    
+WikiText
+    = __ content:(Tag __ / Comment __)* __ {
+        var tags = [];
+        content.forEach(function(entry) {
+            var e = entry[0];
+            if(e !== null) {
+                tags.push(e);
+            }
+        });
+        return Wiki._wikitext(tags);
+    }
+
+Comment
+    = "<!--" (!"-->" .)* "-->" { return null; }
+
+Tag
+    = "{{" __ symbol:Symbol __ tagparameters:TagParameters __ "}}" {
+        return Wiki._tag(symbol.name, tagparameters);
+    }
+
+TagParameters
+    = tagparameters:("|" __ (LabelledTagParameter / FreeTagParameter) __)* {
+        var ts = [];
+        tagparameters.forEach(function(entry) {
+            ts.push(entry[2]);
+        });
+        return Wiki._tagParameters(ts);
+    }
+    
+LabelledTagParameter
+    = symbol:Symbol __ "=" __ text:Text? {
+        return Wiki._tagParameter(symbol.name, text);
+    } 
+
+FreeTagParameter
+    = freetagparameter:Text {
+        return Wiki._tagParameter(null, freetagparameter);
+    }
+
+Text
+    = text:(BaseText / LinkText)+ { return Wiki._text(text); } 
+
+BaseText
+    = basetext:[^|\[}]+ { return Wiki._baseText(basetext); }
+
+LinkText
+    = "[[" linktext:[^\]]+ "]]" { return Wiki._baseText(linktext); } 
+
+Symbol
+    = symbol:[a-zA-Z]+ { return Wiki._wikiSymbol(symbol); }
+
+__
+	= (WhiteSpace / LineTerminatorSequence)*
+  
+WhiteSpace "whitespace"
+	= "\t"
+	/ "\v"
+	/ "\f"
+	/ " "
+	/ "\u00A0"
+	/ "\uFEFF"
+	/ Zs
+	
+LineTerminatorSequence "end of line"
+	= "\n"
+	/ "\r\n"
+	/ "\r"
+	/ "\u2028"
+	/ "\u2029"
+	
+Zs = [\u0020\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]

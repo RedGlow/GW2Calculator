@@ -4,9 +4,6 @@
   "private": true,
   "description": "A calculator for computing gw2 costs.",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/RedGlow/GW2Calculator.git"
@@ -28,8 +25,9 @@
     "gulp-if": "^2.0.0",
     "gulp-less": "^3.0.3",
     "gulp-livereload": "^3.8.1",
+    "gulp-load-plugins": "^1.2.0",
     "gulp-merge": "^0.1.1",
-    "gulp-peg": "^0.1.2",
+    "gulp-peg": "^0.2.0",
     "gulp-rename": "^1.2.2",
     "gulp-replace": "^0.5.4",
     "gulp-sourcemaps": "^1.6.0",
@@ -44,5 +42,9 @@
     "lazypipe": "^1.0.1",
     "merge-stream": "^1.0.0",
     "st": "^1.0.0"
+  },
+  "scripts": {
+    "server": "gulp server",
+    "watch": "gulp watch"
   }
 }

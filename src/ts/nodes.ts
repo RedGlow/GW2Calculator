@@ -1,6 +1,13 @@
 ///<reference path="gw2api.d.ts"/>
+///<reference path="wiki.ts"/>
 
 namespace Parser {
+    function inject(...dependencies: string[]): PropertyDecorator {
+        return (target: Object, propertyKey: string) => {
+            target[propertyKey]['$inject'] = dependencies;
+        }
+    }
+    
 	enum NodeType {
 		Item,
 		Number,
@@ -16,7 +23,7 @@ namespace Parser {
 	export interface INode {
 		toString(): string;
 		getType(): NodeType;
-		getValue($q: ng.IQService, api: IGW2API): ng.IPromise<any>;
+		getValue(...args: any[]): ng.IPromise<any>;
 	}
 	
 	export class Number implements INode {
@@ -33,8 +40,9 @@ namespace Parser {
 		public getType(): NodeType {
 			return NodeType.Number;
 		}
-		
-		getValue($q: ng.IQService, api: IGW2API): ng.IPromise<Typing.NumberWrapper> {
+
+        @inject('$q')
+		getValue($q: ng.IQService): ng.IPromise<Typing.NumberWrapper> {
 			return $q.when(new Typing.NumberWrapper(this.value));
 		}
 	}
@@ -48,7 +56,7 @@ namespace Parser {
 		}
 		abstract toString(): string;
 		abstract getType(): NodeType;
-		abstract getValue($q: ng.IQService, api: IGW2API): ng.IPromise<any>;
+		abstract getValue(...args: any[]): ng.IPromise<any>;
 		protected throwError(numParameter: string, type: string) {
 			this.expected("a " + this.name + " call with " + type + " as " + numParameter + " parameter");
 		}
@@ -70,9 +78,10 @@ namespace Parser {
 			return NodeType.Item;
 		}
 
-		getValue($q: ng.IQService, api: IGW2API): ng.IPromise<Typing.ItemWrapper> {
+        @inject('GW2API', '$injector')
+		getValue(api: IGW2API, $injector: ng.auto.IInjectorService): ng.IPromise<Typing.ItemWrapper> {
 			// get the id
-			return this.id.getValue($q, api).then((value: Typing.NumberWrapper) => {
+			return $injector.invoke(this.id.getValue, this.id).then((value: Typing.NumberWrapper) => {
 				// get the item
 				return api.getItem(value.value);
 			}).then((item: Item) => {
@@ -100,9 +109,10 @@ namespace Parser {
 			return NodeType.Number;
 		}
 
-		getValue($q: ng.IQService, api: IGW2API): ng.IPromise<Typing.NumberWrapper> {
+        @inject('GW2API', '$injector')
+		getValue(api: IGW2API, $injector: ng.auto.IInjectorService): ng.IPromise<Typing.NumberWrapper> {
 			// get the item
-			return this.id.getValue($q, api).then((id: Typing.NumberWrapper) => {
+			return $injector.invoke(this.id.getValue, this.id).then((id: Typing.NumberWrapper) => {
 				// get the listing
 				return api.getListing(id.value);
 			}).then(listing => {
@@ -132,18 +142,75 @@ namespace Parser {
 		public  getType(): NodeType {
 			return this.trueResult.getType();
 		}
-		public getValue($q: ng.IQService, api: IGW2API): ng.IPromise<any> {
-			return this.condition.getValue($q, api).then((condition: Typing.Boolean) => {
+        @inject('$injector')
+		public getValue($injector: ng.auto.IInjectorService): ng.IPromise<any> {
+			return $injector.invoke(this.condition.getValue, this.condition).then((condition: Typing.Boolean) => {
 				var result: INode;
 				if(condition.value) {
 					result = this.trueResult;
 				} else {
 					result = this.falseResult;
 				}
-				return result.getValue($q, api);
+				return $injector.invoke(result.getValue, result);
 			});
 		}
 	}
+    
+    interface IRevisionsQueryResponse {
+        query: IRevisionsQueryResponseSubQuery;
+    }
+    
+    interface IRevisionsQueryResponseSubQuery {
+        pages: { [pageid: number]: IRevisionsQueryResponseSubQueryPage }
+    }
+    
+    interface IRevisionsQueryResponseSubQueryPage {
+        ns: number;
+        pageid: number;
+        revisions: IRevisionsQueryResponseSubQueryPageRevision[];
+    }
+    
+    interface IRevisionsQueryResponseSubQueryPageRevision {
+        contentmodel: string;
+        contentformat: string;
+        '*': string;
+    }
+    
+    export class GetFrequencyCall extends FunctionCall {
+        constructor(public page: string, public entry: string, expected: ExpectedFunction) {
+            super(expected, "wiki");
+        }
+        
+        @inject('$q', '$http')
+        public getValue($q: ng.IQService, $http: ng.IHttpService) {
+            // TODO: caching of requests
+            var url = "/?action=query&titles=" + this.page + "/research&prop=revisions&rvlimit=1&rvprop=content&format=json";
+            return $http.get(url).then(function(response: ng.IHttpPromiseCallbackArg<IRevisionsQueryResponse>) {
+                if(response.status != 200) {
+                    throw new Error("Wiki call failed: status = " + response.status + ", data = " + response.data);
+                }
+                var wikiText = GetFrequencyCall.getWikiTextFromResponse(response.data);
+                var researchTable = Wiki.returnResearchTable(wikiText);
+                return researchTable.getFrequency(this.entry);                
+            });
+        }
+        
+        private static getWikiTextFromResponse(response: IRevisionsQueryResponse): string {
+            var pages = response.query.pages;
+            var pageId = parseInt(Object.getOwnPropertyNames(pages)[0]);
+            var text = pages[pageId].revisions[0]['*'];
+            return text;
+        }
+        
+		public toString(): string {
+            return "EHM";
+        }
+        
+		public getType(): NodeType {
+            return NodeType.Number;
+        }
+        
+    }
 	
 	export enum Operator {
 		Sum,
@@ -211,8 +278,9 @@ namespace Parser {
 			}
 		}
 
-		public getValue($q: ng.IQService, api: IGW2API): ng.IPromise<Typing.NumberWrapper> {
-			return $q.all([this.leftHand.getValue($q, api), this.rightHand.getValue($q, api)]).then((results: Typing.NumberWrapper[]) => {
+        @inject('$q', '$injector')
+		public getValue($q: ng.IQService, $injector: ng.auto.IInjectorService): ng.IPromise<Typing.NumberWrapper> {
+			return $q.all([$injector.invoke(this.leftHand.getValue, this.leftHand), $injector.invoke(this.rightHand.getValue, this.rightHand)]).then((results: Typing.NumberWrapper[]) => {
 				var first = results[0].value,
 					second = results[1].value,
 					result: number|boolean;
@@ -259,8 +327,9 @@ namespace Parser {
 			return NodeType.Cost;
 		}
 		
-		public getValue($q: ng.IQService, api: IGW2API): ng.IPromise<Typing.Cost> {
-			return this.amountNode.getValue($q, api).then((amount: Typing.NumberWrapper) => {
+        @inject('$injector')
+		public getValue($injector: ng.auto.IInjectorService): ng.IPromise<Typing.Cost> {
+			return $injector.invoke(this.amountNode.getValue, this.amountNode).then((amount: Typing.NumberWrapper) => {
 				return new Typing.Cost(amount.value);
 			});
 		}
@@ -314,8 +383,9 @@ namespace Parser {
 			return NodeType.Table;
 		}
 		
-		getValue($q: ng.IQService, api: IGW2API): ng.IPromise<Typing.Table> {
-			var rowValuesPromises = this.rows.map((node) => { return node.getValue($q, api); });
+        @inject('$q', '$injector')
+		getValue($q: ng.IQService, $injector: ng.auto.IInjectorService): ng.IPromise<Typing.Table> {
+			var rowValuesPromises = this.rows.map((node) => { return $injector.invoke(node.getValue, node); });
 			return $q.all(rowValuesPromises).then((values: any[]) => {
 				var numColumns = this.headers.length;
 				var rows = [];
@@ -344,7 +414,8 @@ namespace Parser {
 			return NodeType.Boolean;
 		}
 		
-		getValue($q: ng.IQService, api: IGW2API): ng.IPromise<Typing.Boolean> {
+        @inject('$q')
+		getValue($q: ng.IQService): ng.IPromise<Typing.Boolean> {
 			return $q.when(new Typing.Boolean(this.value));
 		}
 	}

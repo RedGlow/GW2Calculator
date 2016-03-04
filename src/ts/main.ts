@@ -204,8 +204,10 @@ angular.module("gw2-calculator", [
 		}
 	};
 }])
-.controller('MainController', ["$q", "$scope", "GW2API", "$http", "$rootScope", "lzw", "$base64", "$location", ($q: ng.IQService, $scope: IGw2CalculatorScope, GW2API: IGW2API, $http: ng.IHttpService, $rootScope: IMyRootScope, lzw, $base64, $location: ng.ILocationService) => {
-	/*
+.controller('MainController', [
+     "$q",            "$scope",                    "GW2API",        "$http",                "$rootScope",             "$location",                    "$injector",                         "lzw","$base64",
+    ($q: ng.IQService, $scope: IGw2CalculatorScope, GW2API: IGW2API, $http: ng.IHttpService, $rootScope: IMyRootScope, $location: ng.ILocationService, $injector: ng.auto.IInjectorService, lzw, $base64) => {
+/*
 makeTable(Item, Key Cost Through Stabilizing Matrix, Should I buy keys with Stabilizing Matrices?, Sell encryption with order, Sell contents with order)
 (
 getItem(75919),
@@ -232,7 +234,7 @@ cost(
   if(getCost(73248,buy)/2<=2000,getCost(73248,buy)/2,2000)*(500-49))/500
 )
 )
-;*/
+*/
 	var b64lzw = $location.search().b64lzw;
 	if(!!b64lzw) {
 		$scope.expression = lzw.decompress(decodeURIComponent($base64.decode(b64lzw)));
@@ -248,7 +250,7 @@ cost(
 			console.log("parsed:", parsed);
 			$scope.parsedExpression = parsed.toString();
 			console.log("parsed.toString():\n", $scope.parsedExpression);
-			parsed.getValue($q, GW2API).then(result => {
+            $injector.invoke(parsed.getValue, parsed).then(result => {
 				console.log("got result:", result);
 				$scope.result = result;
 			}, (reason: any) => {
@@ -257,7 +259,7 @@ cost(
 			$scope.error = null;
 			$scope.parsingError = null;
 		} catch(e) {
-			console.log("got an error:", e);
+			console.error("got an error:", e);
 			$scope.parsedExpression = null;
 			$scope.result = null;
 			if(e.constructor.name === "SyntaxError") {

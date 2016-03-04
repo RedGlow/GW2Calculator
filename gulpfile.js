@@ -7,6 +7,7 @@ var gulp		= require('gulp')
 ,	merge		= require('merge-stream')
 ,	lazypipe	= require('lazypipe')
 ,	http		= require('http')
+,   url         = require('url')
 ,	st			= require('st')
 ,	config		= require('./gulpfile.config.json')
 ;
@@ -29,7 +30,15 @@ gulp.task('peg', function() {
 		;
 });
 
-gulp.task('js', gulp.series(gulp.parallel('bower', 'tsd', 'peg'), function() {
+gulp.task('pegwikitext', function() {
+    return gulp.src(config.srcDir + '/wikigrammar.peg')
+    // var wikiGrammarCalculatorParser
+        .pipe(plugins.peg({exportVar: 'var wikiTextParser', trace: false}).on("error", plugins.util.log))
+        .pipe(gulp.dest(config.srcDir + '/js'))
+        ;
+})
+
+gulp.task('js', gulp.series(gulp.parallel('bower', 'tsd', 'peg', 'pegwikitext'), function() {
 	// produce asset extractor channel
 	var assets = plugins.useref.assets({
 		noconcat: true,
@@ -39,7 +48,7 @@ gulp.task('js', gulp.series(gulp.parallel('bower', 'tsd', 'peg'), function() {
 	var tsChannel = lazypipe()
 		.pipe(plugins.tslint)
 		.pipe(plugins.tslint.report, 'prose')
-		.pipe(plugins.typescript, config.tsconfig, {
+		.pipe(plugins.typescript, config.tsConfig, {
 			out: 'myscripts.js'
 		})
 		;
@@ -98,9 +107,9 @@ gulp.task('html', function() {
 		;
 });
 
-gulp.task('dist', gulp.parallel(gulp.series('peg', 'js'), 'css', 'html'));
+gulp.task('dist', gulp.parallel(gulp.series('peg', 'pegwikitext', 'js'), 'css', 'html'));
 
-gulp.task('watch', function() {
+gulp.task('watch', gulp.series('dist', 'css', 'peg', 'pegwikitext', 'js', function() {
 	plugins.livereload.listen({
 		basePath: 'dist'
 	});
@@ -108,10 +117,46 @@ gulp.task('watch', function() {
 	gulp.watch('src/less/*', gulp.series('css'));
 	gulp.watch('src/ts/*', gulp.series('js'));
 	gulp.watch('src/grammar.peg', gulp.series('peg', 'js'));
-});
+	gulp.watch('src/wikigrammar.peg', gulp.series('pegwikitext', 'js'));
+}));
 
 gulp.task('server', function(done) {
-	http.createServer(
-		st({path: __dirname + '/dist', index: 'index.html', cache: false})
-	).listen(8080, done);
+    var port = 8080;
+    console.log("http://localhost:" + port + "/static/");
+    var mount = st({path: __dirname + '/dist', url: '/static', index: 'index.html', cache: false})
+	http.createServer(function(req, res) {
+        // static file
+        var handled = mount(req, res);
+        if(handled) {
+            return;
+        }
+        // forward to mediawiki api
+        //var headers = req.headers;
+        var u = url.parse(req.url);
+        var requestOptions = {
+            protocol: "http:",
+            hostname: "wiki.guildwars2.com",
+            path: "/api.php" + u.search,
+            post: 80,
+            method: "GET"
+            //headers: req.headers
+        };
+        var r = http.request(requestOptions, function(res2) {
+            // set headers
+            res.writeHead(res2.statusCode, res2.statusMessage, res2.headers);
+            // forward data
+            res2.on('data', function(chunk) {
+                res.write(chunk);
+            });
+            // end connection
+            res2.on('end', function() {
+                res.end();
+            });
+        });
+        r.on('error', function(e) {
+            console.log("Error!", e);
+            res.end("Error");
+        });
+        r.end();
+    }).listen(port, done);
 });
