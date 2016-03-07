@@ -235,6 +235,9 @@ cost(
 )
 )
 */
+/*
+getFrequency(Cracked_Fractal_Encryption, Treatise)
+*/
 	var b64lzw = $location.search().b64lzw;
 	if(!!b64lzw) {
 		$scope.expression = lzw.decompress(decodeURIComponent($base64.decode(b64lzw)));

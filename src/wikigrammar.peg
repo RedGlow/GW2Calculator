@@ -50,25 +50,18 @@ LinkText
     = "[[" linktext:[^\]]+ "]]" { return Wiki._baseText(linktext); } 
 
 Symbol
-    = symbol:[a-zA-Z]+ { return Wiki._wikiSymbol(symbol); }
+    = symbol:[a-zA-Z0-9]+ { return Wiki._wikiSymbol(symbol); }
 
-__
-	= (WhiteSpace / LineTerminatorSequence)*
-  
-WhiteSpace "whitespace"
-	= "\t"
+__ "whitespace"
+	= ("\t"
 	/ "\v"
 	/ "\f"
 	/ " "
 	/ "\u00A0"
 	/ "\uFEFF"
-	/ Zs
-	
-LineTerminatorSequence "end of line"
-	= "\n"
+    / "\n"
 	/ "\r\n"
 	/ "\r"
 	/ "\u2028"
 	/ "\u2029"
-	
-Zs = [\u0020\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]
+    / [\u0020\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000])*

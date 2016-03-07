@@ -37,7 +37,71 @@ namespace Wiki {
     }
     
     export function parseWikiText(wikiText: string): Tag[] {
-        return wikiTextParser.parse(wikiText);
+        function tracer() {
+            this.lines = wikiText.split("\n");
+        }
+        tracer.prototype.trace = function(evt) {
+            var that = this;
+
+            function log(evt) {
+                function repeat(string, n) {
+                    var result = "", i;
+
+                    for (i = 0; i < n; i++) {
+                        result += string;
+                    }
+
+                    return result;
+                }
+
+                function pad(string, length) {
+                    return string + repeat("_", length - string.length);
+                }
+
+                if (typeof console === "object") {
+                    console.log(
+                        evt.location.start.line + ":" + evt.location.start.column + "-"
+                            + evt.location.end.line + ":" + evt.location.end.column + " "
+                            + pad(evt.type, 10) + " "
+                            + repeat("____", that.indentLevel) + evt.rule
+                    );
+                    if(evt.location.start.line === evt.location.end.line) {
+                        console.log("data:", that.lines[evt.location.start.line-1].slice(evt.location.start.column-1, evt.location.end.column));
+                    } else {
+                        var data = that.lines[evt.location.start.line-1].slice(evt.location.start.column-1);
+                        for(var i = evt.location.start.line; i < evt.location.end.line-1; i++) {
+                            data += "\n";
+                            data += that.lines[i];
+                        }
+                        data += that.lines[evt.location.end.line-1].slice(0, evt.location.end.column-1);
+                        console.log("data:", data);
+                    }
+                }
+            }
+
+            switch (evt.type) {
+                case "rule.enter":
+                    //log(evt);
+                    this.indentLevel++;
+                    break;
+
+                case "rule.match":
+                    this.indentLevel--;
+                    log(evt);
+                    break;
+
+                case "rule.fail":
+                    this.indentLevel--;
+                    log(evt);
+                    break;
+
+                default:
+                    throw new Error("Invalid evt type: " + evt.type + ".");
+            }
+        }
+        return wikiTextParser.parse(wikiText, {
+            tracer: new tracer()
+        });
     }
     
     export function _wikitext(tags: Tag[]): Tag[] {
