@@ -12,6 +12,7 @@ interface IGw2CalculatorScope extends ng.IScope {
 	parsingError: Error;
 	columnSpaces: string;
 	preError: string;
+    inError: string;
 	postError: string;
 }
 
@@ -29,6 +30,15 @@ interface IMyRootScope extends ng.IRootScopeService {
 	copperIcon: string;
 	silverIcon: string;
 	goldIcon: string;
+}
+
+interface ILineBreaker {
+    break(lines: string[], startLine: number, startColumn: number, endLine: number, endColumn: number): string;
+}
+
+class CacheLine {
+    result: any;
+    queuedPromises: ng.IPromise<any>[];
 }
 
 angular.module("gw2-calculator", [
@@ -113,20 +123,22 @@ angular.module("gw2-calculator", [
 		},
 		controller: ['$scope', "$rootScope", function($scope, $rootScope: IMyRootScope) {
 			var data = this;
-			var cost = $scope.cost;
-			data.negative = false;
-			if(cost < 0) {
-				data.negative = true;
-				cost = -cost;
-			}
-			cost = Math.round(cost);
-			data.copper = cost % 100;
-			cost -= data.copper;
-			cost /= 100;
-			data.silver = cost % 100;
-			cost -= data.silver;
-			cost /= 100;
-			data.gold = cost % 100;
+            $scope.$watch('cost', () => {
+                var cost = $scope.cost;
+                data.negative = false;
+                if(cost < 0) {
+                    data.negative = true;
+                    cost = -cost;
+                }
+                cost = Math.round(cost);
+                data.copper = cost % 100;
+                cost -= data.copper;
+                cost /= 100;
+                data.silver = cost % 100;
+                cost -= data.silver;
+                cost /= 100;
+                data.gold = cost % 100;
+            });
 			$rootScope.$watch('goldIcon', function() {
 				data.goldIcon = $rootScope.goldIcon;
 				data.silverIcon = $rootScope.silverIcon;
@@ -205,8 +217,8 @@ angular.module("gw2-calculator", [
 	};
 }])
 .controller('MainController', [
-     "$q",            "$scope",                    "GW2API",        "$http",                "$rootScope",             "$location",                    "$injector",                         "lzw","$base64",
-    ($q: ng.IQService, $scope: IGw2CalculatorScope, GW2API: IGW2API, $http: ng.IHttpService, $rootScope: IMyRootScope, $location: ng.ILocationService, $injector: ng.auto.IInjectorService, lzw, $base64) => {
+    "$q",             "$scope",                    "GW2API",        "$http",                "$rootScope",             "$location",                    "$injector",                         "lzw","$base64", "LineBreaker",
+    ($q: ng.IQService, $scope: IGw2CalculatorScope, GW2API: IGW2API, $http: ng.IHttpService, $rootScope: IMyRootScope, $location: ng.ILocationService, $injector: ng.auto.IInjectorService, lzw, $base64, LineBreaker: ILineBreaker) => {
 /*
 makeTable(Item, Key Cost Through Stabilizing Matrix, Should I buy keys with Stabilizing Matrices?, Sell encryption with order, Sell contents with order)
 (
@@ -215,28 +227,42 @@ cost(getCost(73248,buy)/2),
 getCost(73248,buy)/2<=2000,
 cost(getCost(75919,sell)),
 cost(
-  (
-  getCost(24341,sell)*165+
-  getCost(24294,sell)*140+
-  getCost(24299,sell)*110+
-  getCost(24282,sell)*170+
-  getCost(24288,sell)*120+
-  getCost(24356,sell)*125+
-  getCost(24350,sell)*195+
-  getCost(24276,sell)*160+
-  getCost(49424,sell)*1124+
-  1000*420+
-  1500*59+
-  1500*59+
-  10000*16+
-  50000*5+
-  getCost(74268,sell)*3 -
-  if(getCost(73248,buy)/2<=2000,getCost(73248,buy)/2,2000)*(500-49))/500
+getFrequency(Cracked_Fractal_Encryption, Manuscript)*6000+ 
+getFrequency(Cracked_Fractal_Encryption, Postulate)*2000+
+getFrequency(Cracked_Fractal_Encryption, Proof)*3000+
+getFrequency(Cracked_Fractal_Encryption, Treatise)*2500+ 
+getFrequency(Cracked_Fractal_Encryption, Potent Blood)*getCost(24294,sell)+
+getFrequency(Cracked_Fractal_Encryption, Large Bone)*getCost(24341,sell)+
+getFrequency(Cracked_Fractal_Encryption, Large Claw)*getCost(24350,sell)+
+getFrequency(Cracked_Fractal_Encryption, Large Scale)*getCost(24288,sell)+
+getFrequency(Cracked_Fractal_Encryption, Large Fang)*getCost(24356,sell)+
+getFrequency(Cracked_Fractal_Encryption, Intricate Totem)*getCost(24299,sell)+
+getFrequency(Cracked_Fractal_Encryption, Incandescent Dust)*getCost(24276,sell)+
+getFrequency(Cracked_Fractal_Encryption, Aetherized Skin)*(
+getCost(44049,sell)+
+getCost(44052,sell)+
+getCost(44055,sell)+
+getCost(44037,sell)+
+getCost(44034,sell)+
+getCost(44025,sell)+
+getCost(44016,sell)+
+getCost(44013,sell)+
+getCost(44010,sell)+
+getCost(44046,sell)+
+getCost(44043,sell)+
+getCost(44031,sell)+
+getCost(44007,sell)+
+getCost(44040,sell)+
+getCost(44028,sell)+
+getCost(44022,sell)+
+getCost(44019,sell)+
+getCost(44004,sell)+
+getCost(44001,sell)
+)/19+
+getFrequency(Cracked_Fractal_Encryption, Mini Mew)*getCost(74268,sell)+
+getFrequency(Cracked_Fractal_Encryption, Infusion)*getCost(49424,sell)
 )
 )
-*/
-/*
-getFrequency(Cracked_Fractal_Encryption, Treatise)
 */
 	var b64lzw = $location.search().b64lzw;
 	if(!!b64lzw) {
@@ -265,11 +291,12 @@ getFrequency(Cracked_Fractal_Encryption, Treatise)
 			console.error("got an error:", e);
 			$scope.parsedExpression = null;
 			$scope.result = null;
-			if(e.constructor.name === "SyntaxError") {
+			if(e instanceof gw2CalculatorParser.SyntaxError) { 
 				$scope.parsingError = e;
 				var lines = $scope.expression.split('\n');
-				$scope.preError = lines.slice(0, e.line).join('\n');
-				$scope.postError = lines.slice(e.line+1).join('\n');
+                $scope.preError = LineBreaker.break(lines, 1, 1, e.location.start.line, e.location.start.column);
+                $scope.inError = LineBreaker.break(lines, e.location.start.line, e.location.start.column, e.location.end.line, e.location.end.column);
+                $scope.postError = LineBreaker.break(lines, e.location.end.line, e.location.end.column, lines.length, lines[lines.length-1].length);
 				$scope.columnSpaces = new Array(e.column).join(' ');
 			} else {
 				$scope.error = e;
@@ -290,4 +317,32 @@ getFrequency(Cracked_Fractal_Encryption, Treatise)
 		})
 	});
 }])
+.service("LineBreaker", function() {
+    return {
+        break: function(lines: string[], startLine: number, startColumn: number, endLine: number, endColumn: number): string {
+            var buffer = [];
+            if(startLine != endLine) {
+                buffer.push(lines[startLine-1].slice(startColumn-1));
+                for(var i = startLine; i < endLine-1; i++) {
+                    buffer.push(lines[i]);
+                }
+                buffer.push(lines[i].slice(endColumn-1));
+            } else {
+                buffer.push(lines[startLine-1].slice(startColumn-1, endColumn-1));
+            }
+            return buffer.join("\n");
+        }
+    };
+})
+.service("Cacher", function() {
+    var cache = {};
+    return {
+        getFromCache: function(cacheName, key: any, getterFunction: Function) {
+            if(!cache[cacheName]) {
+                cache[cacheName] = {};
+            }
+            
+        }
+    }
+})
 ;

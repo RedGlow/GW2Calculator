@@ -49,9 +49,7 @@
 				<pre class="col-xs-12" ng-class="{hidden: error === null}" class="error">{{ error }}</pre>
 				<div class="col-xs-12" ng-class="{hidden: parsingError === null}" class="parsing-error">
 					<p>{{ parsingError.message }}</p>
-					<pre class="expression">{{ preError }}
-{{ columnSpaces }}<span class="error-marker">^</span>
-{{ postError }}</pre>
+					<pre class="expression">{{ preError }}<span class="error-marker">^{{ inError }}^</span>{{ postError }}</pre>
 				</div>
 			</div>
 		</div>

@@ -185,13 +185,14 @@ namespace Parser {
         public getValue($q: ng.IQService, $http: ng.IHttpService) {
             // TODO: caching of requests
             var url = "/?action=query&titles=" + this.page + "/research&prop=revisions&rvlimit=1&rvprop=content&format=json";
+            var entry = this.entry;
             return $http.get(url).then(function(response: ng.IHttpPromiseCallbackArg<IRevisionsQueryResponse>) {
                 if(response.status != 200) {
                     throw new Error("Wiki call failed: status = " + response.status + ", data = " + response.data);
                 }
                 var wikiText = GetFrequencyCall.getWikiTextFromResponse(response.data);
                 var researchTable = Wiki.returnResearchTable(wikiText);
-                return researchTable.getFrequency(this.entry);                
+                return new Typing.NumberWrapper(researchTable.getFrequency(entry));               
             });
         }
         
@@ -203,7 +204,7 @@ namespace Parser {
         }
         
 		public toString(): string {
-            return "EHM";
+            return `GetFrequency(of ${this.entry} in ${this.page})`;
         }
         
 		public getType(): NodeType {

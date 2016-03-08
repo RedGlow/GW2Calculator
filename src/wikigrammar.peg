@@ -31,7 +31,7 @@ TagParameters
     }
     
 LabelledTagParameter
-    = symbol:Symbol __ "=" __ text:Text? {
+    = symbol:SpacedSymbol __ "=" __ text:Text? {
         return Wiki._tagParameter(symbol.name, text);
     } 
 
@@ -51,7 +51,10 @@ LinkText
 
 Symbol
     = symbol:[a-zA-Z0-9]+ { return Wiki._wikiSymbol(symbol); }
-
+    
+SpacedSymbol
+    = symbol:[a-zA-Z0-9 ]+ { return Wiki._wikiSymbol(symbol); }
+    
 __ "whitespace"
 	= ("\t"
 	/ "\v"

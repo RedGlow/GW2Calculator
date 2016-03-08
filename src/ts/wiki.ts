@@ -1,21 +1,7 @@
 ///<reference path="wikiparser.d.ts"/>
 namespace Wiki {
     class ResearchTable {
-        private frequencies: number[];
-        
-        constructor(private headers: string[], sums: number[]) {
-            // frequencies = sums normalized.
-            // e.g.:
-            // if: sums = [4, 2, 3, 1]
-            // then: frequencies = [4/10, 2/10, 3/10, 1/10]
-            var total = 0;
-            sums.forEach(value => {
-                total += value;
-            });
-            this.frequencies = [];
-            sums.forEach((value, idx) => {
-                this.frequencies.push(sums[idx] / total);
-            });
+        constructor(private headers: string[], private frequencies: number[]) {
         }
         
         getFrequency(name: string) {
@@ -33,7 +19,33 @@ namespace Wiki {
     export function returnResearchTable(wikiText: string): ResearchTable {
         var parsedText = parseWikiText(wikiText);
         console.log("parsed text:", parsedText);
-        return new ResearchTable([], []);
+        // extract headers
+        var headers = parsedText
+            .filter(tag => tag.name === "SDRH")[0] // extract the header tag
+            .tagParameters.filter(tagParameter => tagParameter.label && /^s[0-9]+$/.test(tagParameter.label.trim())) // takes only the s<number> tag parameters
+            .map(tagParameter => tagParameter.content[0].text.trim()); // extract their values
+        console.log("headers", headers);
+        // extract values
+        var resultMap = {};
+        parsedText
+            .filter(tag => tag.name == "SDRL")
+            .forEach(sdrlTag => {
+                var results = {};
+                sdrlTag.tagParameters.forEach(tagParameter => {
+                    if(!!tagParameter.label) {
+                        results[tagParameter.label.trim()] = parseInt(tagParameter.content[0].text.trim());
+                        //resultMap[tagParameter.label.trim()] = (resultMap[tagParameter.label.trim()] || 0) + parseInt(tagParameter.content[0].text.trim());
+                    }
+                });
+                headers.forEach(header => {
+                    resultMap[header] = (resultMap[header] || 0) + results[header];
+                });
+                resultMap['Total'] = (resultMap['Total'] || 0) + results['Total'];
+            });
+        var frequencies = headers.map(header => resultMap[header] / resultMap['Total']);
+        console.log("frequencies", frequencies);
+        // create the research table
+        return new ResearchTable(headers, frequencies);
     }
     
     export function parseWikiText(wikiText: string): Tag[] {
@@ -99,9 +111,9 @@ namespace Wiki {
                     throw new Error("Invalid evt type: " + evt.type + ".");
             }
         }
-        return wikiTextParser.parse(wikiText, {
+        return wikiTextParser.parse(wikiText/*, {
             tracer: new tracer()
-        });
+        }*/);
     }
     
     export function _wikitext(tags: Tag[]): Tag[] {
