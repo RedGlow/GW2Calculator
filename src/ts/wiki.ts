@@ -1,6 +1,6 @@
 ///<reference path="wikiparser.d.ts"/>
 namespace Wiki {
-    class ResearchTable {
+    export class ResearchTable {
         constructor(private headers: string[], private frequencies: number[]) {
         }
         
@@ -18,13 +18,11 @@ namespace Wiki {
      */
     export function returnResearchTable(wikiText: string): ResearchTable {
         var parsedText = parseWikiText(wikiText);
-        console.log("parsed text:", parsedText);
         // extract headers
         var headers = parsedText
             .filter(tag => tag.name === "SDRH")[0] // extract the header tag
             .tagParameters.filter(tagParameter => tagParameter.label && /^s[0-9]+$/.test(tagParameter.label.trim())) // takes only the s<number> tag parameters
             .map(tagParameter => tagParameter.content[0].text.trim()); // extract their values
-        console.log("headers", headers);
         // extract values
         var resultMap = {};
         parsedText
@@ -43,7 +41,6 @@ namespace Wiki {
                 resultMap['Total'] = (resultMap['Total'] || 0) + results['Total'];
             });
         var frequencies = headers.map(header => resultMap[header] / resultMap['Total']);
-        console.log("frequencies", frequencies);
         // create the research table
         return new ResearchTable(headers, frequencies);
     }

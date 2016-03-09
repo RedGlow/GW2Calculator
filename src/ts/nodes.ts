@@ -181,19 +181,20 @@ namespace Parser {
             super(expected, "wiki");
         }
         
-        @inject('$q', '$http')
-        public getValue($q: ng.IQService, $http: ng.IHttpService) {
-            // TODO: caching of requests
+        @inject('$q', '$http', 'Cacher')
+        public getValue($q: ng.IQService, $http: ng.IHttpService, Cacher: ICacher) {
             var url = "/?action=query&titles=" + this.page + "/research&prop=revisions&rvlimit=1&rvprop=content&format=json";
             var entry = this.entry;
-            return $http.get(url).then(function(response: ng.IHttpPromiseCallbackArg<IRevisionsQueryResponse>) {
-                if(response.status != 200) {
-                    throw new Error("Wiki call failed: status = " + response.status + ", data = " + response.data);
-                }
-                var wikiText = GetFrequencyCall.getWikiTextFromResponse(response.data);
-                var researchTable = Wiki.returnResearchTable(wikiText);
-                return new Typing.NumberWrapper(researchTable.getFrequency(entry));               
-            });
+            return Cacher.getFromCache<Wiki.ResearchTable>(
+                "GetFrequencyCallCache",
+                url,
+                () => $http.get(url).then(function(response: ng.IHttpPromiseCallbackArg<IRevisionsQueryResponse>) {
+                    if(response.status != 200) {
+                        throw new Error("Wiki call failed: status = " + response.status + ", data = " + response.data);
+                    }
+                    var wikiText = GetFrequencyCall.getWikiTextFromResponse(response.data);
+                    return Wiki.returnResearchTable(wikiText);
+                })).then(researchTable => new Typing.NumberWrapper(researchTable.getFrequency(entry)))
         }
         
         private static getWikiTextFromResponse(response: IRevisionsQueryResponse): string {

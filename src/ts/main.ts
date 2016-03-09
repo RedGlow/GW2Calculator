@@ -36,9 +36,77 @@ interface ILineBreaker {
     break(lines: string[], startLine: number, startColumn: number, endLine: number, endColumn: number): string;
 }
 
-class CacheLine {
-    result: any;
-    queuedPromises: ng.IPromise<any>[];
+interface ICacher {
+    getFromCache<T>(cacheName: string, key: string, getterFunction: () => ng.IPromise<any>);
+}
+
+enum CacheLineStatus {
+    NotStarted,
+    Waiting,
+    CompletedSuccess,
+    CompletedRejected
+};
+
+class CacheLine<T> {
+    public status: CacheLineStatus;
+    public result: any;
+    public queuedDeferreds: ng.IDeferred<T>[];
+    constructor() {
+        this.status = CacheLineStatus.NotStarted;
+        this.result = null;
+        this.queuedDeferreds = [];
+    }
+}
+
+class Cache<T> {
+    private cacheLines: {[key: string]: CacheLine<T>};
+    constructor(private $q: ng.IQService) {
+        this.cacheLines = {};
+    }
+    public get(key: string, resolver: () => ng.IPromise<T>): ng.IPromise<T> {
+        // create the cache line, if it doesn't already exist
+        if(!(key in this.cacheLines)) {
+            this.cacheLines[key] = new CacheLine<T>();
+        }
+        var cacheLine = this.cacheLines[key];
+        switch(cacheLine.status) {
+            // the cache line already has a stored value: return it immediately
+            case CacheLineStatus.CompletedSuccess:
+                console.log("CACHE - Returning successful result", cacheLine.result);
+                return this.$q.when(cacheLine.result);
+            // the cache line already has a stored rejection: return it immediately
+            case CacheLineStatus.CompletedRejected:
+                console.log("CACHE - Returning reject result", cacheLine.result);
+                return this.$q.reject(cacheLine.result);
+            // the cache line is waiting for a result: enqueue a promise that will be resolved
+            case CacheLineStatus.Waiting:
+                console.log("CACHE - still waiting for result, returning deferred");
+                var defer = this.$q.defer<T>();
+                cacheLine.queuedDeferreds.push(defer);
+                return defer.promise;
+            // the cache line has not been started: start it
+            case CacheLineStatus.NotStarted:
+                console.log("CACHE - result not available, start resolver");
+                cacheLine.status = CacheLineStatus.Waiting;
+                return resolver().then(result => {
+                    // once it has been resolved, resolve the queued deferreds too
+                    console.log("CACHE - result arrived, resolving", cacheLine.queuedDeferreds.length, "deferreds");
+                    cacheLine.status = CacheLineStatus.CompletedSuccess;
+                    cacheLine.result = result;
+                    cacheLine.queuedDeferreds.forEach(deferred => deferred.resolve(result));
+                    return result;
+                }, reason => {
+                    // same as above, but for rejections
+                    console.log("CACHE - rejection arrived, resolving", cacheLine.queuedDeferreds.length, "deferreds");
+                    cacheLine.status = CacheLineStatus.CompletedRejected;
+                    cacheLine.result = reason;
+                    cacheLine.queuedDeferreds.forEach(deferred => deferred.reject(reason));
+                    return reason;
+                });
+            default:
+                throw new Error("Unknown status " + cacheLine.status);
+        }
+    }
 }
 
 angular.module("gw2-calculator", [
@@ -334,15 +402,15 @@ getFrequency(Cracked_Fractal_Encryption, Infusion)*getCost(49424,sell)
         }
     };
 })
-.service("Cacher", function() {
-    var cache = {};
+.service("Cacher", ["$q", function($q) {
+    var caches: {[key: string]: Cache<any>} = {};
     return {
-        getFromCache: function(cacheName, key: any, getterFunction: Function) {
-            if(!cache[cacheName]) {
-                cache[cacheName] = {};
+        getFromCache: function<T>(cacheName: string, key: string, getterFunction: () => ng.IPromise<any>) {
+            if(!caches[cacheName]) {
+                caches[cacheName] = new Cache<T>($q);
             }
-            
+            return caches[cacheName].get(key, getterFunction);
         }
     }
-})
+}])
 ;
